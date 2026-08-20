@@ -42,3 +42,10 @@ yarn-error.log*
 # Typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Backend — Sarathi
+chroma_data/
+*.wav
+*.mp3
+*.ogg
+*.webm

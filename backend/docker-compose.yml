@@ -1,0 +1,65 @@
+# Sarathi — Docker Compose Stack
+# Runs: FastAPI backend + MongoDB + Ollama (for your custom models)
+#
+# Usage:
+#   docker compose up -d
+#
+# Prerequisites:
+#   - Your custom LLM model loaded in Ollama (ollama create sarathi-legal -f Modelfile)
+#   - Your custom embedding model loaded in Ollama
+
+services:
+  # ── FastAPI Backend ──────────────────────────────────────────
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - chroma_data:/app/chroma_data
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── MongoDB ────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: mongosh --eval "db.adminCommand('ping')" --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Ollama (serves your custom models) ─────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Uncomment for GPU passthrough (NVIDIA):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  chroma_data:
+  ollama_data:
