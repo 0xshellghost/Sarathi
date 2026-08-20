@@ -1,0 +1,26 @@
+# ── Sarathi Backend Dependencies ─────────────────────────────────
+# Zero paid services. All model inference is self-hosted.
+
+# Core Framework
+fastapi>=0.115.9
+uvicorn[standard]>=0.34.0
+pydantic>=2.11.0
+pydantic-settings>=2.9.0
+
+# Async HTTP (for calling Ollama / custom model endpoints)
+httpx>=0.28.0
+
+# Database — MongoDB async driver
+motor>=3.7.0
+
+# Vector Store — ChromaDB (in-process, persistent)
+chromadb>=1.0.0
+
+# SSE streaming
+sse-starlette>=2.3.0
+
+# File uploads (voice search)
+python-multipart>=0.0.20
+
+# Logging
+structlog>=25.4.0

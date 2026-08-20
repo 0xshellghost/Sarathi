@@ -1,92 +1,124 @@
-import json
-import asyncio
-from fastapi import FastAPI, Request
+"""
+Sarathi — AI-Driven Civic & Legal Empowerment Engine
+
+FastAPI application factory with:
+  • Async lifespan management (MongoDB + ChromaDB init/teardown)
+  • Security middleware stack (PII sanitizer, prompt injection guard)
+  • Modular router registration
+  • Structured logging
+"""
+
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 
-from models import (
-    AnalyzeRequest, 
-    FinalizeRequest, 
-    FinalizeResponse,
-    CaseHistoryResponse
-)
+from config import get_settings
+from middleware.pii_sanitizer import PIISanitizerMiddleware
+from middleware.prompt_injection_guard import PromptInjectionGuard
+from routers import analyze, finalize, sessions, transcribe
+from db import mongodb, chromadb_store
 
-app = FastAPI(title="Sarathi API", version="1.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"], 
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ── Logging Setup ────────────────────────────────────────────────
 
-@app.get("/api/v1/sessions/history", response_model=CaseHistoryResponse)
-async def get_history():
-    return {
-        "cases": [
-            {
-                "case_id": "case_mock_001",
-                "type": "rent_deposit_dispute",
-                "summary": "Recovery of deposit from Arun Sharma",
-                "created_at": "2023-10-27T14:32:00Z",
-                "status": "completed"
-            }
-        ]
-    }
+def _configure_logging():
+    settings = get_settings()
+    logging.basicConfig(
+        level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
+        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    # Suppress noisy third-party loggers
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("chromadb").setLevel(logging.WARNING)
+    logging.getLogger("motor").setLevel(logging.WARNING)
 
-@app.get("/api/v1/sessions/cases/{case_id}")
-async def get_case(case_id: str):
-    return {
-        "case_id": case_id,
-        "pdf_payload": {
-            "document_title": "Legal Notice for Recovery of Security Deposit",
-            "defendant_details": {"name": "Arun Sharma"}
+
+_configure_logging()
+logger = logging.getLogger("sarathi")
+
+
+# ── Lifespan (startup/shutdown) ──────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage async resources across the app lifecycle."""
+    settings = get_settings()
+    logger.info("Starting %s v%s", settings.APP_NAME, settings.APP_VERSION)
+
+    # Startup — graceful degradation if services are unavailable
+    try:
+        await mongodb.connect()
+    except Exception as exc:
+        logger.warning("MongoDB unavailable: %s. Session persistence disabled.", exc)
+
+    try:
+        chromadb_store.initialize()
+    except Exception as exc:
+        logger.warning("ChromaDB initialization failed: %s. RAG disabled.", exc)
+
+    logger.info("Startup complete. Ready to serve.")
+
+    yield
+
+    # Shutdown
+    try:
+        await mongodb.disconnect()
+    except Exception:
+        pass
+    logger.info("Shutdown complete.")
+
+
+# ── App Factory ──────────────────────────────────────────────────
+
+def create_app() -> FastAPI:
+    settings = get_settings()
+
+    app = FastAPI(
+        title=settings.APP_NAME,
+        version=settings.APP_VERSION,
+        description="AI-driven Civic & Legal Empowerment Engine for Indian citizens.",
+        lifespan=lifespan,
+    )
+
+    # ── Middleware (order matters: outermost runs first) ──────
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.add_middleware(PIISanitizerMiddleware)
+    app.add_middleware(PromptInjectionGuard)
+
+    # ── Routers ──────────────────────────────────────────────
+    app.include_router(analyze.router)
+    app.include_router(finalize.router)
+    app.include_router(sessions.router)
+    app.include_router(transcribe.router)
+
+    # ── Health Check ─────────────────────────────────────────
+    @app.get("/", tags=["Health"])
+    async def root():
+        return {
+            "service": settings.APP_NAME,
+            "version": settings.APP_VERSION,
+            "status": "operational",
         }
-    }
 
-@app.post("/api/v1/action/finalize", response_model=FinalizeResponse)
-async def finalize_case(data: FinalizeRequest):
-    return {
-        "status": "success",
-        "case_id": "case_mock_002",
-        "pdf_payload": {
-            "document_title": "Legal Notice for Recovery of Security Deposit",
-            "plaintiff_details": {"name": "The Plaintiff"},
-            "defendant_details": {
-                "name": data.extracted_data.get("landlord_name", "Unknown"),
-                "address": data.extracted_data.get("property_address", "Unknown")
-            },
-            "facts_of_case": "You vacated the premises...",
-            "legal_clauses_invoked": ["Section 12 of Model Tenancy Act"],
-            "relief_sought": f"Return of INR {data.extracted_data.get('deposit_amount', 0)}"
+    @app.get("/health", tags=["Health"])
+    async def health():
+        return {
+            "status": "healthy",
+            "mongodb": "connected",
+            "chromadb": chromadb_store.LegalCorpusStore.get_stats(),
         }
-    }
 
-@app.post("/api/v1/action/analyze")
-async def analyze_problem(request: Request):
-    async def event_generator():
-        words = ["Under ", "the ", "Model ", "Tenancy ", "Act, ", "your ", "landlord ", "is ", "legally ", "obligated ", "to ", "return ", "your ", "deposit ", "within ", "30 ", "days."]
-        
-        for word in words:
-            yield f"data: {json.dumps({'type': 'token', 'text': word})}\n\n"
-            await asyncio.sleep(0.05)
-            
-        schema = {
-            "type": "form_request", 
-            "schema": {
-                "case_type": "rent_deposit_dispute",
-                "fields": [
-                    {"key": "landlord_name", "label": "Landlord's Full Name", "type": "text", "required": True},
-                    {"key": "property_address", "label": "Rented Property Address", "type": "text", "required": True},
-                    {"key": "deposit_amount", "label": "Deposit Amount (INR)", "type": "number", "required": True}
-                ]
-            }
-        }
-        yield f"data: {json.dumps(schema)}\n\n"
+    return app
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-@app.get("/")
-async def root():
-    return {"message": "Sarathi AI Backend is running"}
+# ── App Instance (used by uvicorn: `uvicorn main:app`) ───────────
+app = create_app()
