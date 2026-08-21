@@ -22,5 +22,9 @@ sse-starlette>=2.3.0
 # File uploads (voice search)
 python-multipart>=0.0.20
 
+# Web Fetching (Government sites)
+ddgs>=8.0.0  # formerly duckduckgo-search
+beautifulsoup4>=4.12.0
+
 # Logging
 structlog>=25.4.0

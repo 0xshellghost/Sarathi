@@ -1,0 +1,17 @@
+# ── Sarathi Legal Embedding Model ────────────────────────────────
+# Ollama Modelfile for the embedding model used by ChromaDB RAG.
+#
+# This embeds legal text into vectors for similarity search.
+# Your custom embedding model should be trained on Indian legal
+# text pairs (see train.py for the fine-tuning pipeline).
+#
+# Build:   ollama create sarathi-embed -f Modelfile
+# Test:    curl http://localhost:11434/api/embeddings -d '{"model":"sarathi-embed","prompt":"Section 138 NI Act"}'
+# Delete:  ollama rm sarathi-embed
+
+FROM nomic-embed-text
+
+# ── Parameters ───────────────────────────────────────────────────
+# Embedding models don't use temperature or generation params.
+# The key parameter is the context length for input text.
+PARAMETER num_ctx 2048

@@ -49,3 +49,11 @@ chroma_data/
 *.mp3
 *.ogg
 *.webm
+
+# AI Models — Training Outputs
+ai_models/chat_llm/output/
+ai_models/chat_llm/training_data/processed/
+ai_models/embedding/output/
+ai_models/stt/output/
+ai_models/stt/training_data/audio/
+

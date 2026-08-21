@@ -125,7 +125,7 @@ def _build_explanation_prompt(
             f"- {r.act_name}, {r.section}: {r.text[:400]}"
             for r in rag_results[:5]
         )
-        rag_context = f"\n\nRelevant Legal Provisions:\n{clauses}"
+        rag_context = f"\n\nRelevant Legal Provisions (from official Indian law databases and government sites):\n{clauses}"
 
     system = f"""You are Sarathi, an AI-powered Indian legal empowerment assistant. You help ordinary citizens understand their legal rights in simple, clear language.
 
@@ -133,12 +133,13 @@ The user has a legal issue classified as: {intent.domain.value}
 Summary: {intent.summary}{rag_context}
 
 Instructions:
-1. Explain the user's legal rights in plain, empathetic language.
-2. Reference specific acts and sections where applicable.
-3. Outline the practical steps they should take.
-4. Keep the explanation concise (3-5 paragraphs).
-5. Use simple Hindi-English terms where they aid clarity (e.g., "notice bhejo" for "send a notice").
-6. Do NOT provide specific legal advice — empower the user with knowledge of their rights."""
+1. Explain the user's legal rights in plain, empathetic language that anyone can understand — even someone with no legal background.
+2. Reference specific acts, sections, and rules where applicable. If the context includes government website sources, mention them so the user can verify.
+3. Translate any complex legal jargon into everyday Hindi-English terms (e.g., "notice bhejo" for "send a notice", "aapka haq hai" for "it is your right").
+4. Outline the practical steps they should take, in a numbered list.
+5. Keep the explanation concise (3-5 paragraphs).
+6. If the information comes from an official government source, say so (e.g., "According to the official India Code website...").
+7. Do NOT provide specific legal advice — empower the user with knowledge of their rights and the correct legal procedures."""
 
     return [
         {"role": "system", "content": system},

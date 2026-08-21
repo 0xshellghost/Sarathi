@@ -1,0 +1,30 @@
+# ── Sarathi AI Models — ML Dependencies ──────────────────────────
+# Install in a separate venv from the backend.
+# These are training-time dependencies, not runtime.
+
+# ── Core ML ──────────────────────────────────────────────────────
+torch>=2.3.0
+transformers>=4.44.0
+datasets>=3.0.0
+accelerate>=1.0.0
+safetensors>=0.4.0
+
+# ── Chat LLM Fine-Tuning ────────────────────────────────────────
+unsloth>=2024.8
+trl>=0.12.0
+bitsandbytes>=0.44.0
+
+# ── Embedding Model Fine-Tuning ─────────────────────────────────
+sentence-transformers>=3.0.0
+
+# ── STT Model Fine-Tuning ───────────────────────────────────────
+librosa>=0.10.0
+soundfile>=0.12.0
+
+# ── Serving (for embedding and STT servers) ──────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+
+# ── Evaluation & Utilities ──────────────────────────────────────
+httpx>=0.28.0
+scikit-learn>=1.5.0
