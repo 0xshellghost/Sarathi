@@ -1,23 +1,34 @@
-import { NextPage } from 'next'
-import Footer from '@/components/Footer'
-import Header from '@/components/Header'
+// app/layout.tsx
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ToastProvider } from "@/components/ui/Toast";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Sarathi - AI-Powered Civic & Legal Assistance",
+  description: "Legal help, without the legal jargon. Explain your situation in your own words.",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col bg-gray-50">
-        <Header />
-        {/* main wrapper allows the content to expand and push the footer down */}
-        <main className="flex-grow">
-          {children}
-        </main>
-        <Footer />
+      <body className={`${inter.className} antialiased bg-[#f9f9f9] text-[#1a1c1c] min-h-screen flex flex-col`}>
+        <ToastProvider>
+          <Navbar />
+          <main className="flex-1 pt-20">
+            {children}
+          </main>
+          <Footer />
+        </ToastProvider>
       </body>
     </html>
-  )
+  );
 }
