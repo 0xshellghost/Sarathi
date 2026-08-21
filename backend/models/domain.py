@@ -32,7 +32,7 @@ class IntentResult:
 
 @dataclass(frozen=True, slots=True)
 class RAGResult:
-    """A single retrieved legal clause from ChromaDB."""
+    """A single retrieved legal clause from ChromaDB or a live government web search."""
 
     text: str
     act_name: str
