@@ -98,6 +98,12 @@ def setup_model(base_model: str, max_seq_length: int, lora_rank: int):
     logger.info("Trainable parameters: %d / %d (%.2f%%)",
                 trainable, total, 100 * trainable / total)
 
+    from unsloth.chat_templates import get_chat_template
+    tokenizer = get_chat_template(
+        tokenizer,
+        chat_template="llama-3.1",
+    )
+
     return model, tokenizer
 
 
